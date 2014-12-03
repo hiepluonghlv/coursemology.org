@@ -1,3 +1,27 @@
+GIT
+  remote: git://github.com/plataformatec/simple_form.git
+  revision: a43bd2722f95102a60ea1bf50c866857d7949bb8
+  branch: v2.2
+  specs:
+    simple_form (2.1.1)
+      actionpack (~> 3.0)
+      activemodel (~> 3.0)
+
+GIT
+  remote: git://github.com/raymondtangsc/acts_as_relation.git
+  revision: a206b1c0094708207d3e6a00d211ba44f5de05e5
+  branch: V1.0
+  specs:
+    acts_as_relation (1.0.0)
+      activerecord
+
+GIT
+  remote: git://github.com/raymondtangsc/amoeba.git
+  revision: c34132f3f38ef4678f61248f80039bb69c9c4454
+  specs:
+    amoeba (2.0.0)
+      activerecord (>= 3.2.6, < 5)
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -39,6 +63,10 @@ GEM
       json (~> 1.4)
       nokogiri (>= 1.4.4)
       uuidtools (~> 2.1)
+    axlsx (2.0.0)
+      htmlentities (~> 4.3.1)
+      nokogiri (>= 1.4.1)
+      rubyzip (= 0.9.9)
     bcrypt (3.1.7)
     bcrypt (3.1.7-x86-mingw32)
     bcrypt-ruby (3.1.5)
@@ -48,6 +76,9 @@ GEM
     best_in_place (2.1.0)
       jquery-rails
       rails (~> 3.1)
+    better_errors (1.1.0)
+      coderay (>= 1.0.0)
+      erubis (>= 2.6.6)
     bootstrap-colorpicker-rails (0.3.1)
       railties (>= 3.0)
     bootstrap-datetimepicker-rails (0.0.11)
@@ -57,7 +88,7 @@ GEM
       railties (>= 3.0)
     builder (3.0.4)
     callsite (0.0.11)
-    cancan (1.6.10)
+    cancancan (1.8.4)
     capistrano (3.1.0)
       i18n
       rake (>= 10.0.0)
@@ -73,6 +104,8 @@ GEM
     celluloid-io (0.15.0)
       celluloid (>= 0.15.0)
       nio4r (>= 0.5.0)
+    childprocess (0.5.3)
+      ffi (~> 1.0, >= 1.0.11)
     climate_control (0.0.3)
       activesupport (>= 3.0)
     clockwork (0.7.4)
@@ -80,6 +113,7 @@ GEM
       tzinfo
     cocaine (0.5.4)
       climate_control (>= 0.0.3, < 1.0)
+    cocoon (1.2.6)
     codemirror-rails (3.23)
       railties (>= 3.0, < 5)
     coderay (1.1.0)
@@ -90,7 +124,9 @@ GEM
       coffee-script-source
       execjs
     coffee-script-source (1.7.0)
+    connection_pool (2.0.0)
     daemons (1.1.9)
+    dalli (2.7.2)
     delayed_job (4.0.1)
       activesupport (>= 3.0, < 4.2)
     delayed_job_active_record (4.0.1)
@@ -118,9 +154,6 @@ GEM
       multipart-post (>= 1.2, < 3)
     ffi (1.9.3)
     ffi (1.9.3-x86-mingw32)
-    figaro (0.7.0)
-      bundler (~> 1.0)
-      rails (>= 3, < 5)
     font-awesome-sass-rails (3.0.2.2)
       railties (>= 3.1.1)
       sass-rails (>= 3.1.1)
@@ -138,10 +171,16 @@ GEM
     guard-rspec (4.2.8)
       guard (~> 2.1)
       rspec (>= 2.14, < 4.0)
+    guard-spork (1.5.1)
+      childprocess (>= 0.2.3)
+      guard (>= 1.1)
+      spork (>= 0.8.4)
+    haml (4.0.5)
+      tilt
     hashie (2.1.1)
     hike (1.2.3)
     htmlentities (4.3.1)
-    i18n (0.6.9)
+    i18n (0.6.11)
     journey (1.0.4)
     jqtree-rails (0.1.8.1)
       railties (>= 3.2.0, < 5.0)
@@ -152,6 +191,8 @@ GEM
     jquery-rails (2.1.3)
       railties (>= 3.1.0, < 5.0)
       thor (~> 0.14)
+    jquery-tmpl-rails (1.1.0)
+      rails (>= 3.1.0)
     jquery-validation-rails (1.11.1.1)
       railties (>= 3.2, < 5.0)
       thor (~> 0.14)
@@ -176,16 +217,16 @@ GEM
     mail (2.5.4)
       mime-types (~> 1.16)
       treetop (~> 1.4.8)
-    meta_request (0.3.0)
-      callsite
-      rack-contrib
-      railties
+    meta_request (0.3.4)
+      callsite (~> 0.0, >= 0.0.11)
+      rack-contrib (~> 1.1)
+      railties (>= 3.0.0, < 5.0.0)
     method_source (0.8.2)
     mime-types (1.25.1)
     mini_portile (0.5.3)
     momentjs-rails (2.5.1)
       railties (>= 3.1)
-    multi_json (1.9.2)
+    multi_json (1.10.1)
     multi_xml (0.5.5)
     multipart-post (2.0.0)
     mysql2 (0.3.15)
@@ -193,7 +234,7 @@ GEM
     net-scp (1.2.0)
       net-ssh (>= 2.6.5)
     net-ssh (2.8.0)
-    newrelic_rpm (3.7.3.204)
+    newrelic_rpm (3.9.1.236)
     nio4r (1.0.0)
     nokogiri (1.6.1)
       mini_portile (~> 0.5.0)
@@ -257,7 +298,7 @@ GEM
       rake (>= 0.8.7)
       rdoc (~> 3.4)
       thor (>= 0.14.6, < 2.0)
-    rake (10.2.2)
+    rake (10.3.2)
     rb-fsevent (0.9.4)
     rb-inotify (0.9.3)
       ffi (>= 0.5.0)
@@ -294,13 +335,18 @@ GEM
       activerecord (>= 3.0)
       activesupport (>= 3.0)
       uuid
+    spork (1.0.0rc4)
+    spork (1.0.0rc4-x86-mingw32)
+      win32-process
+    spork-rails (4.0.0)
+      rails (>= 3.0.0, < 5)
+      spork (>= 1.0rc0)
+    spring (1.1.3)
     sprockets (2.2.2)
       hike (~> 1.2)
       multi_json (~> 1.0)
       rack (~> 1.0)
       tilt (~> 1.1, != 1.3.0)
-    sqlite3 (1.3.9)
-    sqlite3 (1.3.9-x86-mingw32)
     sshkit (1.3.0)
       net-scp (>= 1.1.2)
       net-ssh
@@ -325,6 +371,8 @@ GEM
     uuidtools (2.1.4)
     warden (1.2.3)
       rack (>= 1.0)
+    win32-process (0.7.4)
+      ffi (>= 1.0.0)
     win32console (1.3.2-x86-mingw32)
     xpath (2.0.0)
       nokogiri (~> 1.3)
@@ -336,37 +384,46 @@ PLATFORMS
 
 DEPENDENCIES
   acts_as_paranoid (~> 0.4.0)
+  acts_as_relation!
   acts_as_votable (~> 0.7.1)
+  amoeba!
   angular-ui-sortable-rails
   angularjs-rails
   aws-sdk (= 1.28.0)
+  axlsx
   best_in_place
+  better_errors
   bootstrap-colorpicker-rails
   bootstrap-datetimepicker-rails
   bootstrap-sass (= 2.1.0.0)
   bootstrap-select-rails
   bootstrap-wysihtml5-rails
-  cancan
+  cancancan (~> 1.8)
   capistrano
   capybara
   clockwork
+  cocoon
   codemirror-rails (~> 3.14)
   coffee-rails
+  connection_pool
   daemons
+  dalli
   delayed_job_active_record
   devise (= 3.0)
   exception_notification
   factory_girl_rails
   faker
-  figaro
   font-awesome-sass-rails
   gon
   google_visualr (>= 2.1)
   guard-rspec
+  guard-spork
+  haml
   htmlentities
   jqtree-rails
   jquery-fileupload-rails
   jquery-rails (= 2.1.3)
+  jquery-tmpl-rails
   jquery-validation-rails
   kaminari
   koala
@@ -375,6 +432,7 @@ DEPENDENCIES
   mysql2
   natcmp
   newrelic_rpm
+  nokogiri
   omniauth
   omniauth-facebook
   paperclip (~> 3.0)
@@ -386,8 +444,10 @@ DEPENDENCIES
   sanitize
   sass-rails (~> 3.2.3)
   scrollToFixed_rails (~> 1.0.0)
+  simple_form!
   slugged (~> 2.0)
-  sqlite3
+  spork-rails
+  spring
   truncate_html
   uglifier (>= 1.0.3)
   yaml_db

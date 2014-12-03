@@ -3,10 +3,10 @@
 </div>
 <h3>Mission: <%= @mission.title %></h3>
 <%= link_to "Click here",
-  course_submissions_path(@course, asm: {id: @mission.id,
-                                         type: @mission.class.name}.to_json),
+            submissions_course_assessment_missions_path(@course,
+                                                        asm: @mission.assessment.id),
   method: "GET" %>
-to review all submission for this training.
+to review all submission for this mission.
 <br/>
 <br/>
 <table class="table">
@@ -83,5 +83,16 @@ to review all submission for this training.
       </select>
     </td>
     <td><a href="#" class="btn btn-select-nav" data-target="#select-training">View</a></td>
+  </tr>
+	<tr>
+    <td>Policy Missions</td>
+    <td>
+      <select id="select-policyMn">
+        <%= @course.policy_missions.each do |asm| %>
+            <option value="<%= course_stats_policy_mission_path(@course, asm) %>"><%= asm.title %></option>
+        <% end %>
+      </select>
+    </td>
+    <td><a href="#" class="btn btn-select-nav" data-target="#select-policyMn">View</a></td>
   </tr>
 </table>

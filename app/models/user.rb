@@ -2,7 +2,9 @@ class User < ActiveRecord::Base
   acts_as_paranoid
   acts_as_voter
 
-  default_scope where(:is_pending_deletion => false)
+  #TODO
+  # default_scope where(:is_pending_deletion => false)
+  default_scope includes(:system_role)
 
   before_create :set_default_role
   before_create :set_default_profile_pic
@@ -17,24 +19,27 @@ class User < ActiveRecord::Base
 
   # Setup accessible (or protected) attributes for your model
   attr_accessible :email, :password, :password_confirmation, :remember_me
-  attr_accessible :display_name, :name, :profile_photo_url, :system_role_id
+  attr_accessible :display_name, :name, :profile_photo_url
   attr_accessible :provider, :uid
+  attr_accessible :use_uploaded_picture
+
+  protected_attributes :system_role_id
 
   validates :name, presence: true
   before_update :send_out_notification_email, :if => :email_changed?
   after_update :update_user_course, :if => :name_changed?
 
   has_many :user_courses, dependent: :destroy
-  has_many :courses, through: :user_courses, dependent: :destroy
+  has_many :courses, through: :user_courses
 
   belongs_to :system_role, class_name: "Role"
 
   def is_admin?
-    self.system_role == Role.find_by_name('superuser')
+    self.system_role && self.system_role.name == 'superuser'
   end
 
   def is_lecturer?
-    self.is_admin? || self.system_role == Role.find_by_name('lecturer')
+    self.is_admin? || (self.system_role && self.system_role.name == 'lecturer')
   end
 
   def self.admins
@@ -65,9 +70,7 @@ class User < ActiveRecord::Base
   end
 
   def self.find_for_facebook_oauth(auth, signed_in_resource = nil)
-    puts auth.to_json
     user = User.where(:provider => auth.provider, :uid => auth.uid).first
-    puts user.to_json
     unless user
       user = User.find_by_email(auth.info.email)
       if user
@@ -90,6 +93,20 @@ class User < ActiveRecord::Base
     user
   end
 
+  def self.find_for_ivle_oauth(email)
+
+      user = User.find_by_email(email)
+      if !user
+         user = User.create(name: email,
+                           email: email
+
+        )
+      end
+      user.save
+
+    user
+  end
+
   def self.new_with_session(params, session)
     super.tap do |user|
       if data = session["devise.facebook_data"] && session["devise.facebook_data"]["extra"]["raw_info"]
@@ -100,13 +117,13 @@ class User < ActiveRecord::Base
   end
 
   def use_default_photo_pic?
-    return self.profile_photo_url ==
+    self.profile_photo_url ==
         'https://fbcdn-profile-a.akamaihd.net/hprofile-ak-ash4/c178.0.604.604/s160x160/252231_1002029915278_1941483569_n.jpg'
   end
 
   def self.search(search, role = nil)
     search_condition = "%" + search.downcase + "%"
-    result = User.where(['lower(name) LIKE ? OR lower(email) LIKE ?', search_condition, search_condition])
+    result = User.where(['lower(users.name) LIKE ? OR lower(users.email) LIKE ?', search_condition, search_condition])
     if role
       result = result.where(system_role_id: role)
     end
@@ -119,7 +136,7 @@ class User < ActiveRecord::Base
   end
 
   def get_profile_photo_url
-    if self.uid && self.provider == "facebook"
+    if !use_uploaded_picture? && self.uid && self.provider == "facebook"
       'http://graph.facebook.com/'+self.uid+'/picture'
     else
       self.profile_photo_url
@@ -132,7 +149,6 @@ class User < ActiveRecord::Base
   end
 
   def auto_enroll_for_invited(confirm_token = nil)
-    puts "auto enroll", email, confirm_token
     invs = MassEnrollmentEmail.where(email: self.email)
     if !invs.first and confirm_token
       invs = MassEnrollmentEmail.where(confirm_token: confirm_token)
@@ -168,6 +184,11 @@ class User < ActiveRecord::Base
   def after_database_authentication
     #self.update_attribute(:invite_code, nil)
     self.is_logged_in = true
+  end
+
+  def update_user_role(role_id)
+    self.system_role_id = role_id
+    self.save
   end
 
   private

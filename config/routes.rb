@@ -1,16 +1,21 @@
-JfdiAcademy::Application.routes.draw do
+Coursemology::Application.routes.draw do
+
 
   authenticated :user do
     root :to => "home#index"
   end
 
   root :to => "static_pages#welcome"
+  get "terms_of_service" => "static_pages#terms_of_service"
   get "welcome" => "static_pages#welcome"
   get "about" => "static_pages#about"
   get "privacy_policy" => "static_pages#privacy_policy"
   get "access_denied" => "static_pages#access_denied"
   get "contact_us" => "static_pages#contact_us"
   get "help" => "static_pages#help"
+
+  get "ivle" => "static_pages#ivle"
+  get "get_profile" => "static_pages#get_profile"
 
   devise_for :users, :controllers => { :omniauth_callbacks => "users/omniauth_callbacks",
                                        :registrations => "registrations",
@@ -21,11 +26,12 @@ JfdiAcademy::Application.routes.draw do
 
   post "user/auto_login" => "auto_login#auto_login_from_facebook"
 
-
   match "admins" => "admins#access_control"
   match "admins/search" => "admins#search"
   match "admins/masquerades" => 'admins#masquerades', as: :admin_masquerades
   match "admins/courses" => "admins#courses", as: :admin_courses
+  get 'admins/system_wide_announcement' => 'admins#new_system_wide_announcement'
+  post 'admins/system_wide_announcement' => 'admins#send_system_wide_announcement'
   #match "admin/access_control" => "admins#access_control"
 
   delete "admins/stop_masquerades" => "masquerades#destroy", as: :destroy_masquerades
@@ -40,8 +46,7 @@ JfdiAcademy::Application.routes.draw do
   resources :role_requests
 
   resources :courses do
-    match "/submissions" => "submissions#listall", as: :submissions
-    match "/training_submissions" => "training_submissions#listall", as: :training_submissions
+    get "/notifications" => "course_notifications#get"
 
     match "/leaderboards"     => "leaderboards#show", as: :leaderboards
     match "/staff"            => "user_courses#staff", as: :staff
@@ -49,51 +54,143 @@ JfdiAcademy::Application.routes.draw do
     match "/manage_group"  => "course_groups#manage_group", as: :manage_group
     post  "/add_student"      => "course_groups#add_student", as: :manage_add_student
     post  "/update_exp"        => "course_groups#update_exp", as: :manage_update_exp
-    match "missions/overview" => "missions#overview", as: :missions_overview
-    post  "missions/bulk_update" => "missions#bulk_update", as: :missions_bulk_update
-    match "trainings/overview" => "trainings#overview", as: :trainings_overview
-    post "trainings/duplicate_qn" => "trainings#duplicate_qn", as: :trainings_duplicate_qn
-    post  "trainings/bulk_update" => "trainings#bulk_update", as: :trainings_bulk_update
+
 
     resources :user_courses do
       resources :exp_transactions
       resources :user_achievements
     end
 
-    resources :missions do
-      resources :mission_coding_questions, as: :coding_questions
-      resources :questions
-      resources :submissions do
-        resources :submission_gradings
+    resources :assessments, module: :assessment, only: [:show] do
+      member do
+        get 'show', to: 'assessments#show'
+        get 'stats'
+        post 'reorder'
+        get 'access_denied'
       end
-      post "submissions/:id/unsubmit" => "submissions#unsubmit", as: :submissions_unsubmit
-      post "submissions/:id/test" => "submissions#test_answer", as: :submission_test
 
-      resources :asm_qns do
+      resources :assessment_questions, path: :questions, controller: :questions do
         collection do
-          post 'reorder'
+          get 'add_question', :action => 'add_question'  
+        end 
+      end
+
+      resources :assessment_mpq_questions,
+                path: :mpq_questions,
+                controller: :mpq_questions
+
+      resources :assessment_mcq_questions,
+                path:       :mcqs,
+                controller: :mcq_questions
+
+      resources :assessment_coding_questions,
+                path:       :coding_questions,
+                controller: :coding_questions
+
+      resources :assessment_general_questions,
+                path:       :general_questions,
+                controller: :general_questions
+
+      resources :assessment_submissions,
+                path:       :submissions,
+                as:         :submissions,
+                controller: :mission_submissions,
+                except: [:create],
+                constraints: MissionConstraint.new do
+
+
+        member do
+          get 'test', to: 'mission_submissions#test_answer'
+          get 'unsubmit' => 'mission_submissions#unsubmit'
+        end
+
+        resources :assessment_submission_gradings,
+                  path: :gradings,
+                  as:   :gradings,
+                  controller: :gradings
+      end
+
+      resources :assessment_submissions,
+                path:       :submissions,
+                as:         :submissions,
+                controller: :training_submissions,
+                except: [:create],
+                constraints: TrainingConstraint.new do
+        member do
+          get 'submit' => 'training_submissions#submit'
+        end
+      end
+
+			resources :assessment_submissions,
+                path:       :submissions,
+                as:         :submissions,
+                controller: :policy_mission_submissions,
+                except: [:create],
+                constraints: PolicyMissionConstraint.new do
+        member do
+          post 'edit' => 'policy_mission_submissions#edit'
+					get 'export' => 'policy_mission_submissions#show_export_excel'
         end
       end
     end
-    match "missions/:id/stats" => "missions#stats", as: :mission_stats
-    match "missions/:id/dump_code" => "missions#dump_code", as: :mission_dump_code
 
-    resources :trainings do
-      resources :mcqs
-      resources :coding_questions
-      resources :training_submissions
-      post "training_submissions/:id/submit" => "training_submissions#submit", as: :training_submission_submit
+    resources :assessment_general_questions, path: :general_questions, controller: :general_questions , module: :assessment   
+    
+    resources :assessment_coding_questions, path: :coding_questions, controller: :coding_questions , module: :assessment   
+    
+    resources :assessment_mcq_questions, path: :mcq_questions, controller: :mcq_questions , module: :assessment
 
-      resources :asm_qns do
-        collection do
-          post 'reorder'
-        end
+    resources :assessment_mpq_questions, path: :mpq_questions, controller: :mpq_questions , module: :assessment do
+      resources :assessment_general_questions, path: :general_questions, controller: :general_questions
+      resources :assessment_coding_questions, path: :coding_questions, controller: :coding_questions
+      resources :assessment_mcq_questions, path: :mcq_questions, controller: :mcq_questions
+    end
+
+    resources :assessment_questions, path: :questions, controller: :questions , module: :assessment do
+      collection do
+        get :index, to: 'questions#index', type: 'question'
+        post :import, to: 'questions#import'
       end
     end
-    match "trainings/:id/stats" => "trainings#stats", as: :training_stats
+    
+    resources :assessment_missions, path: 'missions', controller: :missions, module: :assessment do
+      collection do
+        get :index, to: 'assessments#index', type: 'mission'
+        post 'bulk_update' => 'missions#bulk_update'
+        get 'overview' => 'missions#overview'
+        get 'stats' => 'missions#stats'
+        get 'submissions' => 'assessments#listall', type: 'mission'
+      end
+      get 'dump_code' => 'missions#dump_code'
+    end
+
+		resources :assessment_policy_missions, path: 'policy_missions', controller: :policy_missions, module: :assessment do
+			collection do
+				get :index, to: 'assessments#index', type: 'policy_mission'
+        get 'stats' => 'policy_missions#stats'
+				get 'submissions' => 'assessments#listall', type: 'policy_mission'
+			end
+		end
+
+    resources :assessment_trainings, path: 'trainings', controller: :trainings, module: :assessment do
+      collection do
+        get :index, to: 'assessments#index', type: 'training'
+        post 'bulk_update' => 'trainings#bulk_update'
+        get 'overview' => 'trainings#overview'
+        get 'stats' => 'trainings#stats'
+        get 'submissions' => 'assessments#listall', type: 'training'
+      end
+    end
+
+    scope module: 'assessment' do
+      post "trainings/duplicate_qn" => "trainings#duplicate_qn", as: :assessment_trainings_duplicate_qn
+    end
+
+    resources :tags
+
+
+
     get "pending_actions/:id/ignore" => "pending_actions#ignore", as: :pending_actions_ignore
-
-    resources :mcq_answers
 
     resources :announcements
 
@@ -120,11 +217,23 @@ JfdiAcademy::Application.routes.draw do
 
     post "levels/populate" => "levels#populate", as: :levels_populate
     post "levels/mass_update" => "levels#mass_update", as: :levels_mass_update
-    match "missions/:id/access_denied" => "missions#access_denied", as: :mission_access_denied
-    match "trainings/:id/access_denied" => "trainings#access_denied", as: :training_access_denied
 
     resources :levels
-
+    
+    resources :topicconcepts do
+        post 'get_topicconcept_data', :on => :collection
+        post 'topic_concept_data_create', :on => :collection
+        post 'topic_concept_data_rename', :on => :collection
+        post 'topic_concept_data_delete', :on => :collection
+        post 'topic_concept_data_move', :on => :collection
+        post 'topic_concept_data_dependency', :on => :collection
+        post 'get_concepts_list', :on => :collection
+        post 'topic_concept_data_save_dependency', :on => :collection
+        get 'master'
+        post 'submit_answer', :on => :collection
+        get 'ivleapi'        
+    end
+    
     resources :achievements
 
     resources :requirements
@@ -142,8 +251,6 @@ JfdiAcademy::Application.routes.draw do
     match "enroll_requests/delete_selected" => "enroll_requests#delete_selected", as: :enroll_request_delete_selected
 
     resources :enroll_requests
-
-    resources :tags
 
     resources :tag_groups
 
@@ -164,11 +271,14 @@ JfdiAcademy::Application.routes.draw do
 
     get "stats/trainings/:training_id" => "stats#training", as: :stats_training
 
+		get "stats/policy_missions/:policy_mission_id" => "stats#policy_mission", as: :stats_policy_mission
+		get "stats/policy_missions_excel/:policy_mission_id" => "stats#policy_mission_export_excel", as: :stats_policy_mission_excel
+
     get "duplicate" => "duplicate#manage", as: :duplicate
 
     get "duplicate_course" => "duplicate#duplicate_course", as: :duplicate_course
 
-    match "duplicate_assignments" => "duplicate#duplicate_assignments", as: :duplicate_assignments
+    post "duplicate_assignments" => "duplicate#duplicate_assignments", as: :duplicate_assignments
 
     match "award_exp" => "manual_rewards#manual_exp", as: :manual_exp
 
@@ -179,6 +289,9 @@ JfdiAcademy::Application.routes.draw do
     get "preferences" => "course_preferences#edit", as: :preferences
 
     post "preferences" => "course_preferences#update", as: :preferences
+    
+    post "preferences/sidebar_update_values" => "course_preferences#sidebar_update_values", as: :sidebar_update_values
+    post "preferences/update_display_student_level_achievement" => "course_preferences#update_display_student_level_achievement", as: :update_display_student_level_achievement
 
     resources :mass_enrollment_emails
 
@@ -267,15 +380,11 @@ JfdiAcademy::Application.routes.draw do
 
   match "file_uploads/:id/toggle_access" => "file_uploads#toggle_access", as: :file_uploads_toggle_access
 
-  resources :trainings do
+  resources :assessments do
     resources :file_uploads
   end
 
-  resources :missions do
-    resources :file_uploads
-  end
-
-  resources :submissions do
+  resources :assessment_submissions do
     resources :file_uploads
   end
 

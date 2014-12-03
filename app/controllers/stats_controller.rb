@@ -3,6 +3,7 @@ class StatsController < ApplicationController
   before_filter :load_general_course_data
 
   def general
+    authorize! :manage, @course
   end
 
   # data is a map of the chart column to list of student submission
@@ -20,14 +21,14 @@ class StatsController < ApplicationController
       grade_table.add_row(row)
     end
     opts   = { width: 600, height: 240, title: graph_title, hAxis: { title: key_label } }
-     GoogleVisualr::Interactive::ColumnChart.new(grade_table, opts)
+    GoogleVisualr::Interactive::ColumnChart.new(grade_table, opts)
   end
 
   def mission
-    @mission = Mission.find(params[:mission_id])
-    authorize! :view_stat, @mission
+    @mission = Assessment::Mission.find(params[:mission_id])
+    authorize! :manage, @mission
 
-    @sbms = @mission.sbms
+    @sbms = @mission.submissions
     @graded = @sbms.where(status: 'graded').map { |sbm| sbm.std_course }
     @submitted = @sbms.where(status: 'submitted').map { |sbm| sbm.std_course }
     @attempting = @sbms.where(status: 'attempting').map { |sbm| sbm.std_course }
@@ -39,7 +40,7 @@ class StatsController < ApplicationController
     @unsubmitted = all_std -  @attempting -  @submitted - @graded
 
     sbms_graded = @sbms.graded
-    sbms_by_grade = sbms_graded.group_by { |sbm| sbm.get_final_grading.total_grade }
+    sbms_by_grade = sbms_graded.group_by { |sbm| sbm.get_final_grading.grade }
     @grade_chart = produce_submission_graph(sbms_by_grade, 'Grade', 'Grade distribution')
 
     sbms_by_date = sbms_graded.group_by { |sbm| sbm.created_at.to_date.to_s }
@@ -47,11 +48,12 @@ class StatsController < ApplicationController
 
     @missions = @course.missions
     @trainings = @course.trainings
+		@policy_missions = @course.policy_missions
   end
 
   def training
-    @training = Training.find(params[:training_id])
-    authorize! :view_stat, @training
+    @training = Assessment::Training.find(params[:training_id])
+    authorize! :manage, @training
 
     @summary = {}
     is_all = ((params[:mode] != nil) && params[:mode] == "all") || (curr_user_course.std_courses.count == 0)
@@ -62,23 +64,19 @@ class StatsController < ApplicationController
     std_courses = is_all ? @course.student_courses : curr_user_course.std_courses
     @summary[:student_courses] = std_courses
 
-    submissions =  @training.sbms.where(std_course_id: std_courses)
+    submissions =  @training.submissions.where(std_course_id: std_courses)
     submitted = submissions.map { |sbm| sbm.std_course }
 
     @not_started = std_courses - submitted
     @summary[:not_started] = @not_started
 
-    sbms_by_grade = submissions.group_by { |sbm| sbm.get_final_grading.total_grade }
+    sbms_by_grade = submissions.group_by { |sbm| sbm.get_final_grading.grade }
     @summary[:grade_chart] = produce_submission_graph(sbms_by_grade, 'Grade', 'Grade distribution')
 
     sbms_by_date = submissions.group_by { |sbm| sbm.created_at.strftime("%m-%d") }
     @summary[:date_chart] = produce_submission_graph(sbms_by_date, 'Date', 'Start date distribution')
 
-    if @training.can_skip?
-      @summary[:progress] = submissions.group_by{ |sbm| sbm.answered_questions.size + 1 }
-    else
-      @summary[:progress] = submissions.group_by(&:current_step).sort.reverse
-    end
+    @summary[:progress] = submissions.group_by{ |sbm| sbm.assessment.questions.finalised(sbm).count + 1 }
 
     @summary[:progress_chart] = produce_submission_graph(@summary[:progress], 'Step', 'Current step of students')
 
@@ -87,5 +85,91 @@ class StatsController < ApplicationController
 
     @missions = @course.missions
     @trainings = @course.trainings
+		@policy_missions = @course.policy_missions
   end
+
+	def policy_mission
+		@policy_mission = Assessment::PolicyMission.find(params[:policy_mission_id])
+    authorize! :manage, @policy_mission
+
+		@summary = {}
+		if @policy_mission.progression_policy.isForwardPolicy?
+			forwardPolicy = @policy_mission.progression_policy.getForwardPolicy
+			forwardPolicyLevels = forwardPolicy.forward_policy_levels
+			@summary[:forwardContent] = {}
+			@summary[:forwardContent][:tagGroup] = []
+			forwardPolicyLevels.each do |singleLevel|
+				packagedLevelQuestions = {}
+				packagedLevelQuestions[:name] = singleLevel.getTag.name
+				packagedLevelQuestions[:questions] = singleLevel.getAllRelatedQuestions @policy_mission.assessment
+				@summary[:forwardContent][:tagGroup] << packagedLevelQuestions
+			end
+		end
+
+		@missions = @course.missions
+    @trainings = @course.trainings
+		@policy_missions = @course.policy_missions
+	end
+
+	#Extract all policy mission statistics via excel
+	def policy_mission_export_excel
+		@policy_mission = Assessment::PolicyMission.find(params[:policy_mission_id])
+    authorize! :manage, @policy_mission
+
+		@summary = {}
+		#Extract all of the students data
+		#student_courses = @course.user_courses.student.order('lower(name)')
+
+		if @policy_mission.progression_policy.isForwardPolicy?
+			
+			forwardPolicy = @policy_mission.progression_policy.getForwardPolicy
+			forwardPolicyLevels = forwardPolicy.forward_policy_levels
+			@summary[:forwardContent] = {}
+			@summary[:forwardContent][:tagGroup] = []
+			forwardPolicyLevels.each do |singleLevel|
+				packagedLevelQuestions = {}
+				packagedLevelQuestions[:name] = singleLevel.getTag.name
+				packagedLevelQuestions[:questions] = singleLevel.getAllRelatedQuestions @policy_mission.assessment
+				@summary[:forwardContent][:tagGroup] << packagedLevelQuestions
+			end
+
+			#Overall statistics for each student
+			@summary[:forwardContent][:studentSubmissions] = []
+
+			#Record each submission separately
+			@policy_mission.submissions.each do |singleSubmission|
+
+				student = singleSubmission.std_course.user
+				packageSubmissionUser = {}
+				packageSubmissionUser[:id] = student.id
+				packageSubmissionUser[:name] = student.name
+				packageSubmissionUser[:levelInfos] = []
+
+				allProgressionGroups = singleSubmission.progression_groups.where("is_completed = 1")
+				#Separate each entries by the progression levels
+				allProgressionGroups.each do |progressionGroup|
+					forwardGroup = progressionGroup.getForwardGroup
+						
+					allMcqAnswers = forwardGroup.getAllAnswers
+					numCorrect = 0
+					numTotal = 0
+					allMcqAnswers.each do |singleAnsweredQn|
+						if singleAnsweredQn.correct
+							numCorrect += 1
+						end
+						numTotal += 1
+					end
+
+					packageSubmissionUser[:levelInfos] << numCorrect.to_s + " / " + numTotal.to_s
+				end
+				@summary[:forwardContent][:studentSubmissions] << packageSubmissionUser
+			end
+		end
+
+		respond_to do |format|
+			headers["Content-Disposition"] = "attachment; filename=\"Assignment #{@policy_mission.title}\""
+			headers["Content-Type"] = "xls"
+			format.xls
+		end
+	end
 end
